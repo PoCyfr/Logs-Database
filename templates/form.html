@@ -3,18 +3,24 @@
   </head>
   <body>
 
-  	{% block content %}
     <form action="/" method="post" enctype = "multipart/form-data">
-        <p>{{ form.hidden_tag() }}<p>
-        <p>
-            {{ form.date.label }}<br>
-            {{ form.date }}
-        </p>
-		<input type="file" name="file" autocomplete="off" required><br>
-        <input type="submit">
+          <input type="date" name="date">
+          <input type="time" name="time">
+          <input type="file" name="file" autocomplete="off" required><br>
+
+        <input type="submit" value="Submit">
     </form>
-	{% endblock %}
-  
+
+    <h>Logs</h>
+    <table>
+    {% for location in locations %}
+      <tr onclick="location.href = 'id={{ location.id }}/page=1';">
+
+        <td>{{ location.date }}</td>
+        <td>{{ location.time }}</td>
+      </tr>
+    {% endfor %}
+    </table>
     
   </body>
 </html>  
