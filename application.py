@@ -4,19 +4,23 @@ from application import db
 from application.models import Data
 from application.forms import EnterDBInfo, RetrieveDBInfo
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref, scoped_session, sessionmaker, Query
 
-from wtforms import DateField, SubmitField
+from wtforms import DateField, SubmitField, StringField, BooleanField
+from wtforms.fields.html5 import DateTimeLocalField
+from wtforms_components import TimeField, DateTimeField
 from flask_wtf import Form
 from flask_wtf.file import FileField
 
 from werkzeug.utils import secure_filename
+from werkzeug.datastructures import MultiDict
 
 UPLOAD_FOLDER = '/home/rafa/Documents/fst/logs/uploaded'
 ALLOWED_EXTENSIONS = set(['csv', 'txt'])
-
+DBNAME = "myDatabase"
+LOGSTABLE = "test2"
 
 # Elastic Beanstalk initalization
 application = Flask(__name__)
@@ -32,9 +36,10 @@ Base.metadata.reflect(engine)
 
 
 class Form(Form):
-    date = DateField('Date dd-mm-yyyy', format='%d-%m-%Y')
-    time = DateField('Time')
-    file = FileField()
+    #date = DateField('Date dd-mm-yyyy', format='%d-%m-%Y' )
+    #time = TimeField('Time hh:mm ')
+   # datetime = DateTimeLocalField('Date Time', format = '%d/%m/%y')
+    #file = FileField()
     submit = SubmitField('Submit')
 
 class Data(Base):
@@ -42,6 +47,11 @@ class Data(Base):
 
 class Logs(Base):
     __table__ = Base.metadata.tables['test2']
+
+class Location(Base):
+    __table__ = Base.metadata.tables['location']
+
+
 '''
 @application.route('/', methods=['GET', 'POST'])
 @application.route('/index', methods=['GET', 'POST'])
@@ -92,24 +102,43 @@ def index():
     session = Session()
     #session._model_changes = {}
 
-    s2 = create_session()
+    #s2 = create_session()
 
-    for item in connection.execute(db.select([Data])).fetchall():
-        print item
+    #for item in connection.execute(db.select([Data])).fetchall():
+     #   print item
     
     q = engine.execute('SHOW TABLES')
     tables = q.fetchall()
     print(tables)
 
+
+
+    nextAutoIncrement = engine.execute('SELECT AUTO_INCREMENT\
+                                    FROM information_schema.TABLES\
+                                    WHERE TABLE_SCHEMA = "'+ DBNAME+ '"\
+                                    AND TABLE_NAME = "' + LOGSTABLE + '"').fetchone()[0]
+    print(nextAutoIncrement)
+
+    lastId = session.query(Logs.id).order_by(Logs.id.desc()).limit(1).one_or_none()
+    if(lastId!=None):
+        print(lastId)
+    else:
+        print("None")
+
+
+
     form = Form()
     if form.validate():
-        print(request.form['date'])
-        print(request.form['file'])
+        print("*DATE:" + request.form['date'])
+        print("*TIME:" + request.form['time'])
+        #print(request.form['datetime'])
+        #print(request.form['file'])
 
         
         return 'Form Succesfully Submited'
     
     if request.method == 'POST':
+        print("**DATE:" + request.form['date'] + "TIME**" + request.form['time'])
         print("LLLLLLLLLLLLLLLLLLLLL", request.files, 'file' in request.files)
         if 'file' not in request.files:
             print('No file part')
@@ -125,8 +154,12 @@ def index():
             #contents = file.read(20)
             #print(contents)
 
-            csv_reader = csv.reader(file)
+            nextAutoIncrement = engine.execute('SELECT AUTO_INCREMENT\
+                                    FROM information_schema.TABLES\
+                                    WHERE TABLE_SCHEMA = "'+ DBNAME+ '"\
+                                    AND TABLE_NAME = "' + LOGSTABLE + '"').fetchone()[0]
 
+            csv_reader = csv.reader(file)
             count = 0
             buffer = []
             for row in csv_reader:
@@ -146,13 +179,23 @@ def index():
                     'f13':row[12],
                     'f14':row[13]
                     })
-                if len(buffer) % 50000 == 0:
+                if len(buffer) % 20000 == 0:
                     session.bulk_insert_mappings(Logs, buffer)
                     buffer = []
 
             session.bulk_insert_mappings(Logs, buffer)
-            session.commit()
+            
 
+            lastId = session.query(Logs.id).order_by(Logs.id.desc()).limit(1)
+            if lastId==None: lastId=0
+            print(nextAutoIncrement)
+            newLocation = Location( date = request.form['date'],
+                                    time = request.form['time'],
+                                    first_id = nextAutoIncrement,
+                                    last_id = lastId)
+            session.add(newLocation)
+
+            session.commit()
             #file.save(os.path.join(application.config['UPLOAD_FOLDER'], filename))
             print('File successfully uploaded')
 
