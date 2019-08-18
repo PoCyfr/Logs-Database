@@ -107,9 +107,9 @@ def index():
     #for item in connection.execute(db.select([Data])).fetchall():
      #   print item
     
-    q = engine.execute('SHOW TABLES')
-    tables = q.fetchall()
-    print(tables)
+    #print(session.query(Logs).filter(Logs.id.like('1150000')).all()[0].f1)
+    #print(session.execute('EXPLAIN ' + str(session.query(Logs).filter(Logs.id.like(1150000)))), {'s':'1150000'})
+    #print(str(session.query(Logs).filter(Logs.id.like("?"), 1150000 )))
 
 
 
@@ -134,9 +134,6 @@ def index():
         #print(request.form['datetime'])
         #print(request.form['file'])
 
-        
-        return 'Form Succesfully Submited'
-    
     if request.method == 'POST':
         print("**DATE:" + request.form['date'] + "TIME**" + request.form['time'])
         print("LLLLLLLLLLLLLLLLLLLLL", request.files, 'file' in request.files)
@@ -209,10 +206,17 @@ def index():
 
 
 
-    return render_template('form.html', form=form)
+    return render_template('form.html', locations=session.query(Location).all())
     #return render_template('tables.html', tables = connection.execute(db.select([Logs]).limit(10)).fetchall())
 
 
+@application.route('/id=<id>/page=<page>')
+def show_logs_by_id(id, page):
+    Session = scoped_session(sessionmaker(bind=engine))
+    session = Session()
+
+    location = session.query(Location).filter(Location.id == id).first()
+    return render_template('showLogs.html', location = location, logs=session.query(Logs).limit(25))
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0')
