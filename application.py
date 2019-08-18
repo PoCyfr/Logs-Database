@@ -1,10 +1,12 @@
-import config, os, csv
-from flask import Flask, render_template, request, flash, redirect
+import config, os, csv, math, sys
+import click
+from flask import Flask, render_template, request, flash, redirect, url_for, Blueprint, current_app
+from flask_paginate import Pagination, get_page_parameter, get_page_args
 from application import db
 from application.models import Data
 from application.forms import EnterDBInfo, RetrieveDBInfo
 
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref, scoped_session, sessionmaker, Query
 
@@ -27,7 +29,8 @@ application = Flask(__name__)
 application.debug=True
 application.secret_key = 'cC1YCIWOjGgWspgNEo2'  
 application.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
+mod = Blueprint(LOGSTABLE, __name__)
+#tlogs=None
 
 engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
 connection = engine.connect()
@@ -45,13 +48,13 @@ class Form(Form):
 class Data(Base):
     __table__ = Base.metadata.tables['data']
 
-class Logs(Base):
-    __table__ = Base.metadata.tables['test2']
+class Logs(db.Model):
+    __table__ = Base.metadata.tables[LOGSTABLE]
 
 class Location(Base):
     __table__ = Base.metadata.tables['location']
 
-
+print Logs.__table__.name
 '''
 @application.route('/', methods=['GET', 'POST'])
 @application.route('/index', methods=['GET', 'POST'])
@@ -102,41 +105,27 @@ def index():
     session = Session()
     #session._model_changes = {}
 
+    #global tlogs
+    #tlogs = None
+    #print tlogs
     #s2 = create_session()
 
     #for item in connection.execute(db.select([Data])).fetchall():
      #   print item
     
-    q = engine.execute('SHOW TABLES')
-    tables = q.fetchall()
-    print(tables)
+    #print(session.query(Logs).filter(Logs.id.like('1150000')).all()[0].f1)
+    #print(session.execute('EXPLAIN ' + str(session.query(Logs).filter(Logs.id.like(1150000)))), {'s':'1150000'})
+    #print(str(session.query(Logs).filter(Logs.id.like("?"), 1150000 )))
+
+    #query = str(session.query(Logs).filter(Logs.id.like(1150000))) % ('123',)
+    #result = session.execute('EXPLAIN ' + query).fetchone()
+    #print("R2", result)
 
 
+    #r = str(session.query(Logs).filter(Logs.id == 123)) %('123')
+    #r2 = session.execute('EXPLAIN ' + r).fetchone()
+    #print(r2)
 
-    nextAutoIncrement = engine.execute('SELECT AUTO_INCREMENT\
-                                    FROM information_schema.TABLES\
-                                    WHERE TABLE_SCHEMA = "'+ DBNAME+ '"\
-                                    AND TABLE_NAME = "' + LOGSTABLE + '"').fetchone()[0]
-    print(nextAutoIncrement)
-
-    lastId = session.query(Logs.id).order_by(Logs.id.desc()).limit(1).one_or_none()
-    if(lastId!=None):
-        print(lastId)
-    else:
-        print("None")
-
-
-
-    form = Form()
-    if form.validate():
-        print("*DATE:" + request.form['date'])
-        print("*TIME:" + request.form['time'])
-        #print(request.form['datetime'])
-        #print(request.form['file'])
-
-        
-        return 'Form Succesfully Submited'
-    
     if request.method == 'POST':
         print("**DATE:" + request.form['date'] + "TIME**" + request.form['time'])
         print("LLLLLLLLLLLLLLLLLLLLL", request.files, 'file' in request.files)
@@ -208,11 +197,137 @@ def index():
             return redirect(request.url)
 
 
+    #######
+    location = session.query(Location).filter(Location.id == 5).first()
+    
+    #logs = session.query(Logs).filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).all()
+    totalLogs = int(location.last_id-location.first_id+1)
+    page, per_page, offset = get_page_args(page_parameter='page',
+                                           per_page_parameter='per_page')
+    print page
+    print per_page
+    print offset
+    #logs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).offset(offset).limit(per_page)
+    if location.last_id < offset+per_page+location.first_id:
+        last=location.last_id
+    else:
+        last=offset+per_page+location.first_id
 
-    return render_template('form.html', form=form)
+    print last
+    print offset+location.first_id
+    logs = Logs.query.filter(and_(Logs.id <= last, Logs.id >= offset+location.first_id)).all()
+    #print logs
+
+    pagination = Pagination(page=page,
+                                per_page=per_page,
+                                total=totalLogs,
+                                record_name='users',
+                                format_total=True,
+                                format_number=True,
+                                bs_version=4,
+                                )
+    #######
+
+
+    return render_template('form.html', locations=session.query(Location).all(),
+                                        users=logs,
+
+                                        pagination=pagination,
+                                        )
     #return render_template('tables.html', tables = connection.execute(db.select([Logs]).limit(10)).fetchall())
+
+
+@application.route('/id:<id>/page:<page>')
+def show_logs_by_id(id, page):
+    Session = scoped_session(sessionmaker(bind=engine))
+    session = Session()
+
+    page = int(page)
+    logsPerPage = 7
+    location = session.query(Location).filter(Location.id == id).first()
+    totalLogs = int(location.last_id-location.first_id+1)
+    print("Tot",totalLogs)
+    #pageNumber = math.ceil(float)
+    
+    
+    #session.query(location).
+    with MeasureDuration() as m:
+        '''
+        global tlogs
+
+        if tlogs==None:
+            #tlogs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).paginate(1, logsPerPage, False)
+            tlogs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id))
+        '''
+        #print tlogs
+        #print sys.getsizeof(tlogs)
+
+        logs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id))
+        pageLogs = logs.paginate(page, logsPerPage, False)
+        pagination = Pagination(page=page,
+                                per_page=logsPerPage, 
+                                total=totalLogs, 
+                                
+                                record_name='RECORD_NAME',
+                                )
+    
+    #print(Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)))
+    #print(session.execute('EXPLAIN SELECT test2.f1 AS test2_f1, test2.f2 AS test2_f2, test2.f3 AS test2_f3, test2.f4 AS test2_f4, test2.f5 AS test2_f5, test2.f6 AS test2_f6, test2.f7 AS test2_f7, test2.f8 AS test2_f8, test2.f9 AS test2_f9, test2.f10 AS test2_f10, test2.f11 AS test2_f11, test2.f12 AS test2_f12, test2.f13 AS test2_f13, test2.f14 AS test2_f14, test2.id AS test2_id FROM test2 WHERE test2.id <= 1100 AND test2.id >= 1000').fetchone())
+    
+    #paginate(page Number, number of logs in page, show 404)
+
+    #print(session.query(Logs).paginate(pageNumber, logsPerPage, false))
+    #print(Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)))
+    #print(session.query(Location))
+
+    #return render_template('showLogs.html', location = location, logs=session.query(Logs).limit(logsPerPage))
+    if(pageLogs.has_next):
+        nextUrl = url_for('show_logs_by_id', id = id, page=pageLogs.next_num)
+    else: nextUrl = None
+
+    if(pageLogs.has_prev):
+        prevUrl = url_for('show_logs_by_id', id = id, page=pageLogs.prev_num)
+    else: prevUrl = None
+
+    return render_template('showLogs.html', location = location,
+                                            logs=pageLogs.items,
+                                            nu=nextUrl,
+                                            pu=prevUrl,
+                                            pagination=pagination,)
+
+
+##################
+import time
+class MeasureDuration:
+    def __init__(self):
+        self.start = None
+        self.end = None
+ 
+    def __enter__(self):
+        self.start = time.time()
+        return self
+ 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = time.time()
+        print "Total time taken: %s" % self.duration()
+
+    def duration(self):
+        return str((self.end - self.start) * 1000) + ' milliseconds'
+ 
+####################
+
+
+
+@application.route('/id:<id>/page:<page>')
+def show(id):
+    print ok
+
 
 
 
 if __name__ == '__main__':
     application.run(host='0.0.0.0')
+
+
+
+

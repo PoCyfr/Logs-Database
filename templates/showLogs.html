@@ -1,0 +1,43 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+		<link rel="stylesheet" href="{{ url_for('static', filename='showLogsStyle.css') }}">
+	</head>
+	<body>
+		<h>{{location.date}}</h>
+		<h>{{location.time}}</h>
+		{% if pu %}
+		<a href="{{pu}}">Previous</a>
+		{% endif %}
+
+		{% if nu %}
+		<a href="{{nu}}">Next Page</a>
+	    {% endif %}
+
+	    {{ pagination.info }}
+	    {{ pagination.links }}
+	    <table>
+	    {% for log in logs %}
+	    	<tr>
+	    		<td>{{ loop.index + pagination.skip }}</td>
+		        <td>{{ log.f1 }}</td>
+		        <td>{{ log.f2 }}</td>
+		        <td>{{ log.f3 }}</td>
+		        <td>{{ log.f4 }}</td>
+		        <td>{{ log.f5 }}</td>
+		        <td>{{ log.f6 }}</td>
+		        <td>{{ log.f7 }}</td>
+		        <td>{{ log.f8 }}</td>
+		        <td>{{ log.f9 }}</td>
+		        <td>{{ log.f10 }}</td>
+		        <td>{{ log.f11 }}</td>
+		        <td>{{ log.f12 }}</td>
+		        <td>{{ log.f13 }}</td>
+		        <td>{{ log.f14 }}</td>
+	      	</tr>
+	    {% endfor %}
+	    </table>
+	    {{ pagination.links }}
+	</body>
+</html>
