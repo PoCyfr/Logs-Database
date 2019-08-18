@@ -111,14 +111,28 @@ def index():
     #print(session.execute('EXPLAIN ' + str(session.query(Logs).filter(Logs.id.like(1150000)))), {'s':'1150000'})
     #print(str(session.query(Logs).filter(Logs.id.like("?"), 1150000 )))
 
-    #query = str(session.query(Logs).filter(Logs.id.like(1150000))) % ('123',)
-    #result = session.execute('EXPLAIN ' + query).fetchone()
-    #print("R2", result)
 
 
-    #r = str(session.query(Logs).filter(Logs.id == 123)) %('123')
-    #r2 = session.execute('EXPLAIN ' + r).fetchone()
-    #print(r2)
+    nextAutoIncrement = engine.execute('SELECT AUTO_INCREMENT\
+                                    FROM information_schema.TABLES\
+                                    WHERE TABLE_SCHEMA = "'+ DBNAME+ '"\
+                                    AND TABLE_NAME = "' + LOGSTABLE + '"').fetchone()[0]
+    print(nextAutoIncrement)
+
+    lastId = session.query(Logs.id).order_by(Logs.id.desc()).limit(1).one_or_none()
+    if(lastId!=None):
+        print(lastId)
+    else:
+        print("None")
+
+
+
+    form = Form()
+    if form.validate():
+        print("*DATE:" + request.form['date'])
+        print("*TIME:" + request.form['time'])
+        #print(request.form['datetime'])
+        #print(request.form['file'])
 
     if request.method == 'POST':
         print("**DATE:" + request.form['date'] + "TIME**" + request.form['time'])
