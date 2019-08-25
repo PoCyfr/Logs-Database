@@ -1,5 +1,5 @@
-import config, os, csv, math, sys
-import click
+import config, os, csv, math, sys, tempfile, shutil, logging
+from os import listdir
 from flask import Flask, render_template, request, flash, redirect, url_for, Blueprint, current_app
 from flask_paginate import Pagination, get_page_parameter, get_page_args
 from application import db
@@ -23,6 +23,7 @@ UPLOAD_FOLDER = '/home/rafa/Documents/fst/logs/uploaded'
 ALLOWED_EXTENSIONS = set(['csv', 'txt'])
 DBNAME = "myDatabase"
 LOGSTABLE = "test2"
+LOGSPERPAGE =  100
 
 # Elastic Beanstalk initalization
 application = Flask(__name__)
@@ -101,6 +102,9 @@ def Load_Data(filename):
 def index():
     #print(db.session.query('data').all())
 
+    print engine.execute('SELECT @@global.local_infile').fetchone()
+    print engine.execute("SHOW VARIABLES LIKE 'local_infile'").fetchone()
+
     Session = scoped_session(sessionmaker(bind=engine))
     session = Session()
     #session._model_changes = {}
@@ -142,42 +146,94 @@ def index():
 
             #contents = file.read(20)
             #print(contents)
+            #with MeasureDuration() as m:
 
+            #get next id to be inserted
             nextAutoIncrement = engine.execute('SELECT AUTO_INCREMENT\
                                     FROM information_schema.TABLES\
                                     WHERE TABLE_SCHEMA = "'+ DBNAME+ '"\
                                     AND TABLE_NAME = "' + LOGSTABLE + '"').fetchone()[0]
 
-            csv_reader = csv.reader(file)
-            count = 0
-            buffer = []
-            for row in csv_reader:
-                buffer.append({
-                    'f1':row[0],
-                    'f2':row[1],
-                    'f3':row[2],
-                    'f4':row[3],
-                    'f5':row[4],
-                    'f6':row[5],
-                    'f7':row[6],
-                    'f8':row[7],
-                    'f9':row[8],
-                    'f10':row[9],
-                    'f11':row[10],
-                    'f12':row[11],
-                    'f13':row[12],
-                    'f14':row[13]
-                    })
-                if len(buffer) % 20000 == 0:
-                    session.bulk_insert_mappings(Logs, buffer)
-                    buffer = []
+            '''
+                csv_reader = csv.reader(file)
+                count = 0
+                buffer = []
+                for row in csv_reader:
+                    buffer.append({
+                        'f1':row[0],
+                        'f2':row[1],
+                        'f3':row[2],
+                        'f4':row[3],
+                        'f5':row[4],
+                        'f6':row[5],
+                        'f7':row[6],
+                        'f8':row[7],
+                        'f9':row[8],
+                        'f10':row[9],
+                        'f11':row[10],
+                        'f12':row[11],
+                        'f13':row[12],
+                        'f14':row[13]
+                        })
+                    if len(buffer) % 20000 == 0:
+                        session.bulk_insert_mappings(Logs, buffer)
+                        buffer = []
 
-            session.bulk_insert_mappings(Logs, buffer)
+                session.bulk_insert_mappings(Logs, buffer)
+                '''
+
+                
             
+            temp_dir = tempfile.gettempdir()
+            temp_path = os.path.join(temp_dir, filename)
+
+            print temp_dir, temp_path
+            logging.warning("#########################################################")
+            logging.warning(temp_dir)
+            logging.warning(temp_path)
+
+            #Copy file to temp probably
+            file.save(temp_path)
+
+            files = os.listdir("/tmp")
+            for i in files:
+                logging.warning(i)
+
+            #Upload file from temp to database
+            '''
+            engine.execute('LOAD DATA LOCAL INFILE "' + temp_path+'"\
+                            INTO TABLE ' + LOGSTABLE + '\
+                            FIELDS TERMINATED BY \',\'\
+                            ENCLOSED BY \'\"\'\
+                            LINES TERMINATED BY \'\\n\'')
+            '''
+            print engine.execute('SELECT @@global.local_infile').fetchone()
+            print engine.execute("SHOW VARIABLES LIKE 'local_infile'").fetchone()
+            sql='LOAD DATA LOCAL INFILE "' + temp_path+'"\
+                            INTO TABLE ' + LOGSTABLE + '\
+                            FIELDS TERMINATED BY \',\'\
+                            ENCLOSED BY \'\"\'\
+                            LINES TERMINATED BY \'\\n\'\
+                            (f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13,f14)'
+
+            print sql
+            engine.execute(sql)
+            '''
+            files = os.listdir(os.path.dirname(os.path.abspath(__file__)))
+            for i in files:
+                logging.warning(i)
+            #file.save(os.path.join('/tmp', filename))
+
+            logging.warning("#########################################################")
+
+            files = os.listdir("/tmp")
+            for i in files:
+                logging.warning(i)
+            '''
 
             lastId = session.query(Logs.id).order_by(Logs.id.desc()).limit(1)
             if lastId==None: lastId=0
-            print(nextAutoIncrement)
+            print("AUTO INC: " + str(nextAutoIncrement))
             newLocation = Location( date = request.form['date'],
                                     time = request.form['time'],
                                     first_id = nextAutoIncrement,
@@ -185,10 +241,7 @@ def index():
             session.add(newLocation)
 
             session.commit()
-            #file.save(os.path.join(application.config['UPLOAD_FOLDER'], filename))
-            print('File successfully uploaded')
-
-
+            os.remove(temp_path)
             #data = Load_Data(filename) 
 
             return redirect('/')
@@ -198,69 +251,26 @@ def index():
 
 
     #######
-    location = session.query(Location).filter(Location.id == 5).first()
     
-    #logs = session.query(Logs).filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).all()
-    totalLogs = int(location.last_id-location.first_id+1)
-    page, per_page, offset = get_page_args(page_parameter='page',
-                                           per_page_parameter='per_page')
-    print page
-    print per_page
-    print offset
-    #logs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).offset(offset).limit(per_page)
-    if location.last_id < offset+per_page+location.first_id:
-        last=location.last_id
-    else:
-        last=offset+per_page+location.first_id
-
-    print last
-    print offset+location.first_id
-    logs = Logs.query.filter(and_(Logs.id <= last, Logs.id >= offset+location.first_id)).all()
-    #print logs
-
-    pagination = Pagination(page=page,
-                                per_page=per_page,
-                                total=totalLogs,
-                                record_name='users',
-                                format_total=True,
-                                format_number=True,
-                                bs_version=4,
-                                )
     #######
 
 
     return render_template('form.html', locations=session.query(Location).all(),
-                                        users=logs,
-
-                                        pagination=pagination,
                                         )
     #return render_template('tables.html', tables = connection.execute(db.select([Logs]).limit(10)).fetchall())
 
 
-@application.route('/id:<id>/page:<page>')
-def show_logs_by_id(id, page):
+@application.route('/id:<id>/')
+def show_logs_by_id(id):
     Session = scoped_session(sessionmaker(bind=engine))
     session = Session()
 
-    page = int(page)
-    logsPerPage = 7
     location = session.query(Location).filter(Location.id == id).first()
     totalLogs = int(location.last_id-location.first_id+1)
     print("Tot",totalLogs)
-    #pageNumber = math.ceil(float)
-    
-    
-    #session.query(location).
-    with MeasureDuration() as m:
-        '''
-        global tlogs
 
-        if tlogs==None:
-            #tlogs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).paginate(1, logsPerPage, False)
-            tlogs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id))
-        '''
-        #print tlogs
-        #print sys.getsizeof(tlogs)
+    '''
+    with MeasureDuration() as m:
 
         logs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id))
         pageLogs = logs.paginate(page, logsPerPage, False)
@@ -271,17 +281,7 @@ def show_logs_by_id(id, page):
                                 record_name='RECORD_NAME',
                                 )
     
-    #print(Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)))
-    #print(session.execute('EXPLAIN SELECT test2.f1 AS test2_f1, test2.f2 AS test2_f2, test2.f3 AS test2_f3, test2.f4 AS test2_f4, test2.f5 AS test2_f5, test2.f6 AS test2_f6, test2.f7 AS test2_f7, test2.f8 AS test2_f8, test2.f9 AS test2_f9, test2.f10 AS test2_f10, test2.f11 AS test2_f11, test2.f12 AS test2_f12, test2.f13 AS test2_f13, test2.f14 AS test2_f14, test2.id AS test2_id FROM test2 WHERE test2.id <= 1100 AND test2.id >= 1000').fetchone())
-    
-    #paginate(page Number, number of logs in page, show 404)
-
-    #print(session.query(Logs).paginate(pageNumber, logsPerPage, false))
-    #print(Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)))
-    #print(session.query(Location))
-
-    #return render_template('showLogs.html', location = location, logs=session.query(Logs).limit(logsPerPage))
-    if(pageLogs.has_next):
+        if(pageLogs.has_next):
         nextUrl = url_for('show_logs_by_id', id = id, page=pageLogs.next_num)
     else: nextUrl = None
 
@@ -295,6 +295,40 @@ def show_logs_by_id(id, page):
                                             pu=prevUrl,
                                             pagination=pagination,)
 
+
+    '''
+    page=int(request.args.get('page', 1))
+    per_page = LOGSPERPAGE
+    offset = (page-1)*per_page
+    print page
+    print per_page
+    print offset
+    #logs = Logs.query.filter(and_(Logs.id <= location.last_id, Logs.id >= location.first_id)).offset(offset).limit(per_page)
+    if location.last_id < offset+per_page+location.first_id:
+        last=location.last_id+1
+    else:
+        last=offset+per_page+location.first_id
+
+    print last
+    print offset+location.first_id
+    logs = Logs.query.filter(and_(Logs.id < last, Logs.id >= offset+location.first_id)).all()
+    #print logs
+
+    pagination = Pagination(page=page,
+                            per_page=per_page,
+                            offset=offset,
+                            total=totalLogs,
+                            record_name='logs',
+                            format_total=False,
+                            format_number=True,
+                            bs_version=4,
+                            )
+
+
+    return render_template('showLogs.html', location = location,
+                                        logs = logs,
+                                        pagination=pagination,
+                                        )
 
 ##################
 import time
