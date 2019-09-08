@@ -1,12 +1,15 @@
 <html>
 	<head>
+
 		<meta charset="utf-8">
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
 		<link rel="stylesheet" href="{{ url_for('static', filename='showLogsStyle.css') }}">
+
 	</head>
 	<body>
 		<h>{{location.date}}</h>
 		<h>{{location.time}}</h>
+
 		{% if pu %}
 		<a href="{{pu}}">Previous</a>
 		{% endif %}
@@ -39,5 +42,6 @@
 	    {% endfor %}
 	    </table>
 	    {{ pagination.links }}
+
 	</body>
 </html>

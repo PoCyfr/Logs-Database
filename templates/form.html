@@ -3,7 +3,6 @@
   </head>
   <body>
 
-  	{% block content %}
     <form action="/" method="post" enctype = "multipart/form-data">
           <input type="date" name="date">
           <input type="time" name="time">
@@ -11,8 +10,17 @@
 
         <input type="submit" value="Submit">
     </form>
-	{% endblock %}
-  
+
+    <h>Logs</h>
+    <table>
+    {% for location in locations %}
+      <tr onclick="location.href = 'id={{ location.id }}/page=1';">
+
+        <td>{{ location.date }}</td>
+        <td>{{ location.time }}</td>
+      </tr>
+    {% endfor %}
+    </table>
     
   </body>
 </html>  

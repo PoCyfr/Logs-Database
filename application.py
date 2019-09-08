@@ -121,6 +121,7 @@ def index():
     #print(session.execute('EXPLAIN ' + str(session.query(Logs).filter(Logs.id.like(1150000)))), {'s':'1150000'})
     #print(str(session.query(Logs).filter(Logs.id.like("?"), 1150000 )))
 
+
     #query = str(session.query(Logs).filter(Logs.id.like(1150000))) % ('123',)
     #result = session.execute('EXPLAIN ' + query).fetchone()
     #print("R2", result)
@@ -255,6 +256,7 @@ def index():
     #######
 
 
+
     return render_template('form.html', locations=session.query(Location).all(),
                                         )
     #return render_template('tables.html', tables = connection.execute(db.select([Logs]).limit(10)).fetchall())
@@ -262,10 +264,12 @@ def index():
 
 @application.route('/id:<id>/')
 def show_logs_by_id(id):
+
     Session = scoped_session(sessionmaker(bind=engine))
     session = Session()
 
     location = session.query(Location).filter(Location.id == id).first()
+
     totalLogs = int(location.last_id-location.first_id+1)
     print("Tot",totalLogs)
 
@@ -355,7 +359,6 @@ class MeasureDuration:
 @application.route('/id:<id>/page:<page>')
 def show(id):
     print ok
-
 
 
 
