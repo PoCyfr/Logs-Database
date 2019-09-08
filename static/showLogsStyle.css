@@ -23,3 +23,8 @@ li{
     list-style-type: none;
     display: inline;
 }
+
+.table{
+    width: 80%;
+    padding-top: 20px;
+}

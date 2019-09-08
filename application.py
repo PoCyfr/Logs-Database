@@ -52,7 +52,7 @@ class Data(Base):
 class Logs(db.Model):
     __table__ = Base.metadata.tables[LOGSTABLE]
 
-class Location(Base):
+class Location(db.Model):
     __table__ = Base.metadata.tables['location']
 
 print Logs.__table__.name
@@ -120,7 +120,6 @@ def index():
     #print(session.query(Logs).filter(Logs.id.like('1150000')).all()[0].f1)
     #print(session.execute('EXPLAIN ' + str(session.query(Logs).filter(Logs.id.like(1150000)))), {'s':'1150000'})
     #print(str(session.query(Logs).filter(Logs.id.like("?"), 1150000 )))
-
 
     #query = str(session.query(Logs).filter(Logs.id.like(1150000))) % ('123',)
     #result = session.execute('EXPLAIN ' + query).fetchone()
@@ -256,20 +255,16 @@ def index():
     #######
 
 
-
-    return render_template('form.html', locations=session.query(Location).all(),
-                                        )
+    return render_template('form.html', locations=session.query(Location).all())
     #return render_template('tables.html', tables = connection.execute(db.select([Logs]).limit(10)).fetchall())
 
 
 @application.route('/id:<id>/')
 def show_logs_by_id(id):
-
     Session = scoped_session(sessionmaker(bind=engine))
     session = Session()
 
     location = session.query(Location).filter(Location.id == id).first()
-
     totalLogs = int(location.last_id-location.first_id+1)
     print("Tot",totalLogs)
 
@@ -334,6 +329,22 @@ def show_logs_by_id(id):
                                         pagination=pagination,
                                         )
 
+
+@application.route('/search', methods=['GET', 'POST'])
+def search():
+    if request.method == 'POST':
+        Session = scoped_session(sessionmaker(bind=engine))
+        session = Session()
+
+        search = request.form['search']
+        date1 = request.form['date1']
+        date2 = request.form['date2']
+
+        logs = Location.query.filter(and_(Location.date >= date1, Location.date <= date2)).order_by(Location.date.asc(), Location.time.asc()).all()
+        return render_template('form.html', locations=logs)
+
+    return redirect('/')
+
 ##################
 import time
 class MeasureDuration:
@@ -359,6 +370,7 @@ class MeasureDuration:
 @application.route('/id:<id>/page:<page>')
 def show(id):
     print ok
+
 
 
 
