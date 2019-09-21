@@ -15,6 +15,17 @@
     font-size: 150%;
 }
 
+.page-link {
+    position: relative;
+    display: block;
+    padding: .5rem .75rem;
+    margin-left: -1px;
+    line-height: 1.25;
+    color: #007bff;
+    background-color: #fff;
+    border: 1px solid #ddd;
+}
+
 .pagination {
     margin: 0 auto;
 }
