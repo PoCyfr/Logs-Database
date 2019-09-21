@@ -7,27 +7,53 @@
   <body>
 
     <form action="/" method="post" enctype = "multipart/form-data">
+      
+      <div>Name</div>
+      <input type="text" name="name"><br>
+      <div>Tags</div>
+      <select name="tags">
+        <option value="Skidpad">Skidpad</option>
+        <option value="Acceleration">Acceleration</option>
+        <option value="Autocross">Autocross</option>
+        <option value="Endurance">Endurance</option>
+        <option value="Tests">Tests</option>
+      </select>
+      <select name="car">
+        <option value="10">10e</option>
+        <option value="09">09e</option>
+        <option value="08">08e</option>
+      </select>
+      <br><br>
+      <div>date time</div>
+
       <input type="date" name="date">
-      <input type="time" name="time">
+      <input type="time" name="time" step="1">
+      <br>
+      <div>File</div>
       <input type="file" name="file" autocomplete="off" required><br>
       <input type="submit" value="Submit">
     </form>
 
-    <form action="{{ url_for('search') }}" method="post">
-      <input type="number" name="search" min="1">
-      <input type="date" name="date1">
-      <input type="date" name="date2">
-      <input type="submit" value="Submit">
-    </form>
-
-
-    <h>Logs</h>
-    <table>
+    <table class="table table-hover table-sm">
+      <thead>
+        <tr>
+          <th >Name</th>
+          <th >Tag</th>
+          <th >Car</th>
+          <th >Date</th>
+          <th >Time</th>
+        </tr>
+     </thead>
     {% for location in locations %}
-      <tr onclick="location.href += 'id:{{ location.id }}';">
-
+      <tr onclick="location.href = '{{ url_for('show_logs_by_id', id=location.id) }}';">
+        <td>{{ location.name }}</td>
+        <td>{{ location.tag }}</td>
+        <td>{{ location.car }}</td>
         <td>{{ location.date }}</td>
         <td>{{ location.time }}</td>
+        <td>
+          <a href="{{ url_for('delete', id=location.id) }}">delete</a>
+        </td>
       </tr>
     {% endfor %}
     </table>
