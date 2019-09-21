@@ -1,26 +1,36 @@
 <html>
   <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='showLogsStyle.css') }}">
   </head>
   <body>
 
     <form action="/" method="post" enctype = "multipart/form-data">
-          <input type="date" name="date">
-          <input type="time" name="time">
-          <input type="file" name="file" autocomplete="off" required><br>
-
-        <input type="submit" value="Submit">
+      <input type="date" name="date">
+      <input type="time" name="time">
+      <input type="file" name="file" autocomplete="off" required><br>
+      <input type="submit" value="Submit">
     </form>
+
+    <form action="{{ url_for('search') }}" method="post">
+      <input type="number" name="search" min="1">
+      <input type="date" name="date1">
+      <input type="date" name="date2">
+      <input type="submit" value="Submit">
+    </form>
+
 
     <h>Logs</h>
     <table>
     {% for location in locations %}
-      <tr onclick="location.href = 'id={{ location.id }}/page=1';">
+      <tr onclick="location.href += 'id:{{ location.id }}';">
 
         <td>{{ location.date }}</td>
         <td>{{ location.time }}</td>
       </tr>
     {% endfor %}
     </table>
-    
+
   </body>
 </html>  
